@@ -123,6 +123,7 @@ The server provides the following tools, which can be called by an MCP client:
     *   **Parameters**:
         *   `ip` (string, required): The IP address to analyze.
         *   `analyzer_name` (string, optional): The specific name of the AbuseIPDB analyzer instance in Cortex. Defaults to `AbuseIPDB_1_0`.
+        *   `max_retries` (integer, optional): Maximum number of times to poll for the analyzer job to complete. Defaults to 5.
 
 2.  **`analyze_with_abusefinder`**
     *   **Description**: Analyzes various types of data (IP, domain, FQDN, URL, or email) using an AbuseFinder analyzer via Cortex. Returns the job report if successful.
@@ -130,18 +131,21 @@ The server provides the following tools, which can be called by an MCP client:
         *   `data` (string, required): The data to analyze (e.g., "1.1.1.1", "example.com", "http://evil.com/malware", "test@example.com").
         *   `data_type` (string, required): The type of the data. Must be one of: `ip`, `domain`, `fqdn`, `url`, `mail`.
         *   `analyzer_name` (string, optional): The specific name of the AbuseFinder analyzer instance in Cortex. Defaults to `Abuse_Finder_3_0`.
+        *   `max_retries` (integer, optional): Maximum number of times to poll for the analyzer job to complete. Defaults to 5.
 
 3.  **`scan_url_with_virustotal`**
     *   **Description**: Scans a URL using a VirusTotal_Scan analyzer (e.g., `VirusTotal_Scan_3_1`) via Cortex. Returns the job report if successful.
     *   **Parameters**:
         *   `url` (string, required): The URL to scan.
         *   `analyzer_name` (string, optional): The specific name of the VirusTotal_Scan analyzer instance in Cortex. Defaults to `VirusTotal_Scan_3_1`.
+        *   `max_retries` (integer, optional): Maximum number of times to poll for the analyzer job to complete. Defaults to 5.
 
 4.  **`analyze_url_with_urlscan_io`**
     *   **Description**: Analyzes a URL using a Urlscan.io analyzer (e.g., `Urlscan_io_Scan_0_1_0`) via Cortex. Returns the job report if successful.
     *   **Parameters**:
         *   `url` (string, required): The URL to analyze.
         *   `analyzer_name` (string, optional): The specific name of the Urlscan.io analyzer instance in Cortex. Defaults to `Urlscan_io_Scan_0_1_0`.
+        *   `max_retries` (integer, optional): Maximum number of times to poll for the analyzer job to complete. Defaults to 5.
 
 
 

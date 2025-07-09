@@ -127,6 +127,7 @@ mod common {
         job_request: cortex_client::models::JobCreateRequest,
         analyzer_name_for_log: &str,
         observable_for_log: &str,
+        max_retries: usize,
     ) -> Result<cortex_client::models::JobReportResponse, Box<dyn std::error::Error>> {
         use cortex_client::apis::job_api;
         use std::time::Duration;
@@ -154,7 +155,6 @@ mod common {
                         "Attempting to fetch report with retries"
                     );
 
-                    let max_retries = 5;
                     let retry_delay = Duration::from_secs(5);
 
                     for attempt in 1..=max_retries {
@@ -298,6 +298,8 @@ struct AnalyzeIpParams {
         description = "Optional: The name of the AbuseIPDB analyzer instance in Cortex. Defaults to 'AbuseIPDB_1_0'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -314,6 +316,8 @@ struct AnalyzeWithAbuseFinderParams {
         description = "Optional: The name of the AbuseFinder analyzer instance in Cortex. Defaults to 'AbuseFinder_3_0'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -324,6 +328,8 @@ struct ScanUrlWithVirusTotalParams {
         description = "Optional: The name of the VirusTotal_Scan analyzer instance in Cortex. Defaults to 'VirusTotal_Scan_3_1'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -334,6 +340,8 @@ struct AnalyzeUrlWithUrlscanIoParams {
         description = "Optional: The name of the Urlscan_io_Scan analyzer instance in Cortex. Defaults to 'Urlscan_io_Scan_0_1_0'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -414,12 +422,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &ip_to_analyze,
+            max_retries,
         )
         .await
         {
@@ -531,12 +541,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &format!("{} ({})", data_to_analyze, data_type),
+            max_retries,
         )
         .await
         {
@@ -634,12 +646,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &url_to_scan,
+            max_retries,
         )
         .await
         {
@@ -736,12 +750,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &url_to_analyze,
+            max_retries,
         )
         .await
         {
