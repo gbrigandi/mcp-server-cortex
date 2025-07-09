@@ -327,7 +327,7 @@ struct ScanUrlWithVirusTotalParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct ScanUrlWithUrlscanIoParams {
+struct AnalyzeUrlWithUrlscanIoParams {
     #[schemars(description = "The URL to scan.")]
     url: String,
     #[schemars(
