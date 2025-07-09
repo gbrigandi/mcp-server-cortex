@@ -24,7 +24,7 @@ This MCP server makes these benefits accessible to MCP-compatible clients, enabl
 2.  **Cortex Instance**: A running Cortex instance is required.
     *   The server needs network access to this Cortex instance.
     *   An API key for Cortex with permissions to list analyzers and run jobs.
-3.  **Configured Analyzers**: The specific analyzers you intend to use (e.g., `AbuseIPDB_1_0`, `Abuse_Finder_3_0`, `VirusTotal_Scan_3_1`) must be enabled and correctly configured within your Cortex instance.
+3.  **Configured Analyzers**: The specific analyzers you intend to use (e.g., `AbuseIPDB_1_0`, `Abuse_Finder_3_0`, `VirusTotal_Scan_3_1`, `Urlscan_io_Scan_0_1_0`) must be enabled and correctly configured within your Cortex instance.
 
 ## Installation
 
@@ -70,6 +70,9 @@ The tools currently use the following analyzers by default (though these can oft
     *   AbuseFinder might have its own configuration requirements or dependencies within Cortex.
 *   **`scan_url_with_virustotal`**: Uses an analyzer like `VirusTotal_Scan_3_1`.
     *   This analyzer requires a VirusTotal API key. Ensure this is configured in Cortex.
+*   **`analyze_url_with_urlscan_io`**: Uses an analyzer like `Urlscan_io_Scan_0_1_0`.
+    *   This analyzer requires an API key for urlscan.io. Ensure this is configured in Cortex.
+
 
 **Key Points:**
 
@@ -133,6 +136,14 @@ The server provides the following tools, which can be called by an MCP client:
     *   **Parameters**:
         *   `url` (string, required): The URL to scan.
         *   `analyzer_name` (string, optional): The specific name of the VirusTotal_Scan analyzer instance in Cortex. Defaults to `VirusTotal_Scan_3_1`.
+
+4.  **`analyze_url_with_urlscan_io`**
+    *   **Description**: Analyzes a URL using a Urlscan.io analyzer (e.g., `Urlscan_io_Scan_0_1_0`) via Cortex. Returns the job report if successful.
+    *   **Parameters**:
+        *   `url` (string, required): The URL to analyze.
+        *   `analyzer_name` (string, optional): The specific name of the Urlscan.io analyzer instance in Cortex. Defaults to `Urlscan_io_Scan_0_1_0`.
+
+
 
 ## Building
 
