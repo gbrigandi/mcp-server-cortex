@@ -159,6 +159,40 @@ impl TestMcpClient {
         Ok(response)
     }
     
+    pub async fn list_prompts(&mut self) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": self.next_id,
+            "method": "prompts/list",
+            "params": {}
+        });
+        
+        self.send_request(request).await?;
+        let response = self.read_response().await?;
+        Ok(response)
+    }
+    
+    pub async fn get_prompt(&mut self, name: &str, arguments: Option<Value>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        let mut params = serde_json::json!({
+            "name": name
+        });
+        
+        if let Some(args) = arguments {
+            params["arguments"] = args;
+        }
+        
+        let request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": self.next_id,
+            "method": "prompts/get",
+            "params": params
+        });
+        
+        self.send_request(request).await?;
+        let response = self.read_response().await?;
+        Ok(response)
+    }
+    
     pub fn cancel(&self) {
         self.cancellation_token.cancel();
     }
