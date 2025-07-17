@@ -77,6 +77,10 @@ jobs:
           security set-keychain-settings -lut 21600 temp-keychain
           security unlock-keychain -p temp-password temp-keychain
           
+          # Add keychain to search list and set as default
+          security list-keychains -d user -s temp-keychain $(security list-keychains -d user | sed s/\"//g)
+          security default-keychain -s temp-keychain
+          
           # Import certificate
           echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
           security import certificate.p12 -k temp-keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
