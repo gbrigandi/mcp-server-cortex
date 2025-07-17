@@ -8,6 +8,14 @@ description = "An MCP server that acts as a bridge to a Cortex instance, exposin
 repository = "https://github.com/gbrigandi/mcp-server-cortex" # Please verify this URL
 readme = "README.md"
 
+[lib]
+name = "mcp_server_cortex"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mcp-server-cortex"
+path = "src/main.rs"
+
 [dependencies]
 rmcp = { version = "0.3.0", features = ["server", "transport-io"] }
 rmcp-macros = "0.3.0"
@@ -20,3 +28,12 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
  
 async-trait = "0.1.88"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tokio-util = "0.7"
+serde_json = "1.0"
+hyper = { version = "1.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] }
+tower = { version = "0.5", features = ["full"] }
+http-body-util = "0.1"
