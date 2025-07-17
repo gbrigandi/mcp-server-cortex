@@ -132,12 +132,11 @@ Available Cortex Tools:
 - `analyze_ip_with_abuseipdb`: Analyzes IP addresses using AbuseIPDB reputation service
 - `analyze_with_abusefinder`: Analyzes IPs, domains, FQDNs, URLs, or email addresses using AbuseFinder
 - `scan_url_with_virustotal`: Scans URLs using VirusTotal URL scanner
-- `analyze_url_with_urlscan_io`: Analyzes URLs using URLScan.io service
 - `scan_hash_with_virustotal`: Scans file hashes using VirusTotal hash lookup
 
 Cortex Recommendations:
 - IPs: Use analyze_ip_with_abuseipdb or analyze_with_abusefinder
-- Domains/URLs: Use scan_url_with_virustotal, analyze_url_with_urlscan_io, or analyze_with_abusefinder
+- Domains/URLs: Use scan_url_with_virustotal or analyze_with_abusefinder
 - File Hashes: Use scan_hash_with_virustotal
 - Email addresses: Use analyze_with_abusefinder
 

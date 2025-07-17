@@ -490,7 +490,6 @@ async fn test_soc_analyst_prompt() {
     assert!(text.contains("scan_url_with_virustotal"), "Prompt should mention URL scanning tool");
     assert!(text.contains("scan_hash_with_virustotal"), "Prompt should mention hash scanning tool");
     assert!(text.contains("analyze_with_abusefinder"), "Prompt should mention AbuseFinder tool");
-    assert!(text.contains("analyze_url_with_urlscan_io"), "Prompt should mention URLScan.io tool");
     
     // Validate key methodology elements
     assert!(text.contains("MITRE ATT&CK"), "Prompt should mention MITRE ATT&CK");
@@ -507,6 +506,7 @@ async fn test_soc_analyst_prompt() {
     // Validate tool recommendations
     assert!(text.contains("Cortex Recommendations"), "Prompt should contain tool recommendations");
     assert!(text.contains("IPs: Use analyze_ip_with_abuseipdb"), "Prompt should have IP recommendations");
+    assert!(text.contains("Domains/URLs: Use scan_url_with_virustotal or analyze_with_abusefinder"), "Prompt should have URL recommendations");
     assert!(text.contains("File Hashes: Use scan_hash_with_virustotal"), "Prompt should have hash recommendations");
     
     // Validate communication guidance
@@ -532,6 +532,7 @@ async fn test_soc_analyst_prompt() {
     // Should still contain all the core SOC analyst elements
     assert!(context_text.contains("SOC analyst"), "Prompt should still contain 'SOC analyst'");
     assert!(context_text.contains("analyze_ip_with_abuseipdb"), "Prompt should still mention analysis tools");
+    assert!(!context_text.contains("analyze_url_with_urlscan_io"), "Prompt should not mention URLScan.io tool");
     
     // Test get_prompt with invalid prompt name
     let invalid_response = timeout(Duration::from_secs(5), client.get_prompt("invalid_prompt", None)).await;
