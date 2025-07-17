@@ -127,6 +127,7 @@ mod common {
         job_request: cortex_client::models::JobCreateRequest,
         analyzer_name_for_log: &str,
         observable_for_log: &str,
+        max_retries: usize,
     ) -> Result<cortex_client::models::JobReportResponse, Box<dyn std::error::Error>> {
         use cortex_client::apis::job_api;
         use std::time::Duration;
@@ -154,7 +155,6 @@ mod common {
                         "Attempting to fetch report with retries"
                     );
 
-                    let max_retries = 5;
                     let retry_delay = Duration::from_secs(5);
 
                     for attempt in 1..=max_retries {
@@ -298,6 +298,8 @@ struct AnalyzeIpParams {
         description = "Optional: The name of the AbuseIPDB analyzer instance in Cortex. Defaults to 'AbuseIPDB_1_0'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -314,6 +316,8 @@ struct AnalyzeWithAbuseFinderParams {
         description = "Optional: The name of the AbuseFinder analyzer instance in Cortex. Defaults to 'AbuseFinder_3_0'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -324,6 +328,20 @@ struct ScanUrlWithVirusTotalParams {
         description = "Optional: The name of the VirusTotal_Scan analyzer instance in Cortex. Defaults to 'VirusTotal_Scan_3_1'."
     )]
     analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+struct AnalyzeUrlWithUrlscanIoParams {
+    #[schemars(description = "The URL to scan.")]
+    url: String,
+    #[schemars(
+        description = "Optional: The name of the Urlscan_io_Scan analyzer instance in Cortex. Defaults to 'Urlscan_io_Scan_0_1_0'."
+    )]
+    analyzer_name: Option<String>,
+    #[schemars(description = "Optional: Maximum number of retries to wait for the analyzer job to complete. Defaults to 5.")]
+    max_retries: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -404,12 +422,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &ip_to_analyze,
+            max_retries,
         )
         .await
         {
@@ -521,12 +541,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &format!("{} ({})", data_to_analyze, data_type),
+            max_retries,
         )
         .await
         {
@@ -624,12 +646,14 @@ impl CortexToolsServer {
             attributes: None,
         };
 
+        let max_retries = params.max_retries.unwrap_or(5);
         match common::run_job_and_wait_for_report(
             &self.cortex_config,
             &analyzer_worker_id,
             job_create_request,
             &analyzer_name_to_run,
             &url_to_scan,
+            max_retries,
         )
         .await
         {
@@ -658,6 +682,110 @@ impl CortexToolsServer {
             }
         }
     }
+
+    #[tool(
+        name = "analyze_url_with_urlscan_io",
+        description = "Analyzes a URL using the Urlscan.io analyzer via Cortex. Returns the job report if successful."
+    )]
+    async fn analyze_url_with_urlscan_io(
+        &self,
+        #[tool(aggr)] params: AnalyzeUrlWithUrlscanIoParams,
+    ) -> Result<CallToolResult, McpError> {
+        let url_to_analyze = params.url;
+        let analyzer_name_to_run = params
+            .analyzer_name
+            .unwrap_or_else(|| "Urlscan_io_Scan_0_1_0".to_string());
+        let data_type = "url";
+
+        tracing::info!(
+            url = %url_to_analyze,
+            analyzer = %analyzer_name_to_run,
+            "Attempting URL analysis with urlscan.io"
+        );
+
+        let analyzer_worker_id = match common::get_analyzer_id_by_name(
+            &self.cortex_config,
+            &analyzer_name_to_run,
+        )
+        .await
+        {
+            Ok(Some(id)) => id,
+            Ok(None) => {
+                let err_msg = format!(
+                    "Could not find an analyzer instance named '{}'. Ensure it's enabled in Cortex.",
+                    analyzer_name_to_run
+                );
+                tracing::error!("{}", err_msg);
+                return Ok(CallToolResult::error(vec![Content::text(err_msg)]));
+            }
+            Err(e) => {
+                let err_msg = format!(
+                    "Error getting analyzer ID for '{}': {}",
+                    analyzer_name_to_run, e
+                );
+                tracing::error!("{}", err_msg);
+                return Ok(CallToolResult::error(vec![Content::text(err_msg)]));
+            }
+        };
+
+        tracing::info!(
+            "Attempting to run analyzer '{}' (ID: '{}') on URL: {}",
+            analyzer_name_to_run,
+            analyzer_worker_id,
+            url_to_analyze
+        );
+
+        let job_create_request = cortex_client::models::JobCreateRequest {
+            data: Some(url_to_analyze.clone()),
+            data_type: Some(data_type.to_string()),
+            tlp: Some(2), // AMBER
+            pap: Some(2), // AMBER
+            message: Some(Some(format!(
+                "MCP Cortex Server: Analyzing URL {} with {}",
+                url_to_analyze, analyzer_name_to_run
+            ))),
+            parameters: None,
+            label: Some(Some(format!("mcp_urlscanio_analysis_{}", url_to_analyze))),
+            force: Some(false),
+            attributes: None,
+        };
+
+        let max_retries = params.max_retries.unwrap_or(5);
+        match common::run_job_and_wait_for_report(
+            &self.cortex_config,
+            &analyzer_worker_id,
+            job_create_request,
+            &analyzer_name_to_run,
+            &url_to_analyze,
+            max_retries,
+        )
+        .await
+        {
+            Ok(report_response) => {
+                tracing::info!(
+                    "Successfully obtained report for URL {} using analyzer {}",
+                    url_to_analyze,
+                    analyzer_name_to_run
+                );
+                let success_content = json!({
+                    "status": "success",
+                    "report": report_response
+                });
+                Ok(CallToolResult::success(vec![
+                    Content::json(success_content)
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?,
+                ]))
+            }
+            Err(e) => {
+                let err_msg = format!(
+                    "Error running analyzer '{}' for URL '{}' and waiting for report: {:?}",
+                    analyzer_name_to_run, url_to_analyze, e
+                );
+                tracing::error!("{}", err_msg);
+                Ok(CallToolResult::error(vec![Content::text(err_msg)]))
+            }
+        }
+    }
 }
 
 #[tool(tool_box)]
@@ -677,7 +805,9 @@ impl ServerHandler for CortexToolsServer {
                 - 'analyze_ip_with_abuseipdb': Analyzes an IP address using the AbuseIPDB analyzer. \
                 Requires 'ip' and optionally 'analyzer_name' (defaults to 'AbuseIPDB_1_0').\n\
                 - 'analyze_with_abusefinder': Analyzes data (IP, domain, FQDN, URL, or mail) using the AbuseFinder analyzer. \
-                Requires 'data', 'data_type' (one of 'ip', 'domain', 'fqdn', 'url', 'mail'), and optionally 'analyzer_name' (defaults to 'AbuseFinder_3_0')."
+                Requires 'data', 'data_type' (one of 'ip', 'domain', 'fqdn', 'url', 'mail'), and optionally 'analyzer_name' (defaults to 'AbuseFinder_3_0').\n\
+                - 'scan_url_with_virustotal': Scans a URL using the VirusTotal analyzer. Requires 'url' and optionally 'analyzer_name' (defaults to 'VirusTotal_Scan_3_1').\n\
+                - 'analyze_url_with_urlscan_io': Analyzes a URL using the Urlscan.io analyzer. Requires 'url' and optionally 'analyzer_name' (defaults to 'Urlscan_io_Scan_0_1_0')."
                     .to_string(),
             ),
         }
