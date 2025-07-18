@@ -18,15 +18,3 @@ Thumbs.db
 # Environment configuration files (if any, e.g. .env)
 # .env
 
-# Apple code signing and notarization files
-AuthKey_*.p8
-*.p12
-*.base64
-*-notarization.zip
-temp_cert.pem
-
-# Embedded repositories
-Cortex/
-Cortex-Analyzers/
-rust-sdk/
-
