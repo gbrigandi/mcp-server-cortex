@@ -70,28 +70,26 @@ jobs:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
-          # Create temporary keychain
-          security create-keychain -p temp-password temp-keychain
-          security set-keychain-settings -lut 21600 temp-keychain
-          security unlock-keychain -p temp-password temp-keychain
+          # Create temporary keychain with proper extension
+          security create-keychain -p temp-password build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp-password build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
           
-          # Add keychain to search list and set as default
-          security list-keychains -d user -s temp-keychain $(security list-keychains -d user | sed s/\"//g)
-          security default-keychain -s temp-keychain
-          
-          # Import certificate
+          # Import certificate with -A flag to avoid access control issues
           echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
-          security import certificate.p12 -k temp-keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign
           
           # Import Apple intermediate certificate (DER format)
           curl -o DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
-          security import DeveloperIDG2CA.cer -k temp-keychain -T /usr/bin/codesign
+          security import DeveloperIDG2CA.cer -k build.keychain -A -T /usr/bin/codesign
           
           # Import Apple Worldwide Developer Relations CA G3 (DER format)
           curl -o AppleWWDRCAG3.cer https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
-          security import AppleWWDRCAG3.cer -k temp-keychain -T /usr/bin/codesign
+          security import AppleWWDRCAG3.cer -k build.keychain -A -T /usr/bin/codesign
           
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp-password temp-keychain
+          # Set partition list to avoid password prompts
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp-password build.keychain
           
           # Clean up certificate files
           rm certificate.p12 DeveloperIDG2CA.cer AppleWWDRCAG3.cer
@@ -101,22 +99,20 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
-          # Debug: List all identities in keychain
-          echo "=== All identities in temp-keychain ==="
-          security find-identity -v temp-keychain || true
-          echo "=== Code signing identities ==="
-          security find-identity -v -p codesigning temp-keychain || true
-          echo "=== Using login keychain ==="
-          security find-identity -v -p codesigning || true
+          # Debug: List all identities in build keychain
+          echo "=== All identities in build.keychain ==="
+          security find-identity -v build.keychain || true
+          echo "=== Code signing identities in build.keychain ==="
+          security find-identity -v -p codesigning build.keychain || true
           
           # Try to use the identity name directly from secret
           echo "Trying to sign with identity name: '$APPLE_SIGNING_IDENTITY'"
           
           # Sign the binary using the identity name
-          codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp --options runtime ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
+          /usr/bin/codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp --options runtime ./target/${{ matrix.target }}/release/${{ matrix.output_name }} -v
           
           # Verify signature
-          codesign --verify --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
+          /usr/bin/codesign --verify --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
