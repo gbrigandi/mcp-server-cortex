@@ -90,7 +90,7 @@ jobs:
           
           # Import certificate with explicit output
           echo "=== Importing certificate ==="
-          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign -v 2>&1 || echo "Certificate import failed"
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign 2>&1 || echo "Certificate import failed"
           
           # Debug: Check what was imported
           echo "=== Items in keychain after import ==="
