@@ -76,25 +76,14 @@ jobs:
           security unlock-keychain -p temp-password build.keychain
           security set-keychain-settings -lut 21600 build.keychain
           
+          # Add build keychain to search list
+          security list-keychains -d user -s build.keychain $(security list-keychains -d user | sed s/\"//g)
+          
           # Import certificate with -A flag to avoid access control issues
           echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
           
-          # Debug: Check P12 file size and basic info
-          echo "=== P12 file info ==="
-          ls -la certificate.p12
-          file certificate.p12
-          
-          # Try to verify P12 file with password
-          echo "=== Testing P12 password ==="
-          openssl pkcs12 -in certificate.p12 -noout -passin pass:"$APPLE_CERTIFICATE_PASSWORD" 2>&1 || echo "P12 password verification failed"
-          
-          # Import certificate with explicit output
-          echo "=== Importing certificate ==="
-          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign 2>&1 || echo "Certificate import failed"
-          
-          # Debug: Check what was imported
-          echo "=== Items in keychain after import ==="
-          security dump-keychain build.keychain 2>&1 || echo "Keychain dump failed"
+          # Import certificate (should contain both cert and private key)
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign
           
           # Import Apple intermediate certificate (DER format)
           curl -o DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
@@ -115,17 +104,16 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
-          # Debug: List all identities in build keychain
-          echo "=== All identities in build.keychain ==="
-          security find-identity -v build.keychain || true
+          # Check identities in build keychain
           echo "=== Code signing identities in build.keychain ==="
           security find-identity -v -p codesigning build.keychain || true
           
-          # Try to use the identity name directly from secret
-          echo "Trying to sign with identity name: '$APPLE_SIGNING_IDENTITY'"
+          # Extract signing identity hash from build keychain
+          SIGNING_HASH=$(security find-identity -v -p codesigning build.keychain | grep "$APPLE_SIGNING_IDENTITY" | grep -oE "[0-9A-F]{40}" | head -n 1)
+          echo "Using signing hash: $SIGNING_HASH"
           
-          # Sign the binary using the identity name
-          /usr/bin/codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp --options runtime ./target/${{ matrix.target }}/release/${{ matrix.output_name }} -v
+          # Sign the binary using the SHA-1 hash
+          /usr/bin/codesign --force --sign "$SIGNING_HASH" --timestamp --options runtime ./target/${{ matrix.target }}/release/${{ matrix.output_name }} -v
           
           # Verify signature
           /usr/bin/codesign --verify --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
