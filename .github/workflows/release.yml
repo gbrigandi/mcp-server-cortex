@@ -98,30 +98,22 @@ jobs:
 
       - name: Code Sign Binary (macOS only)
         if: matrix.os == 'macos-latest' || matrix.os == 'macos-14'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           # Debug: List all identities in keychain
           echo "=== All identities in temp-keychain ==="
           security find-identity -v temp-keychain || true
           echo "=== Code signing identities ==="
           security find-identity -v -p codesigning temp-keychain || true
+          echo "=== Using login keychain ==="
+          security find-identity -v -p codesigning || true
           
-          # Find signing identity in keychain
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning temp-keychain | grep -oEi "([0-9A-F]{40})" | head -n 1)
-          echo "Using signing identity: '$SIGNING_IDENTITY'"
+          # Try to use the identity name directly from secret
+          echo "Trying to sign with identity name: '$APPLE_SIGNING_IDENTITY'"
           
-          if [ -z "$SIGNING_IDENTITY" ]; then
-            echo "No signing identity found, trying alternative method..."
-            SIGNING_IDENTITY=$(security find-identity -v temp-keychain | grep "Developer ID Application" | grep -oEi "([0-9A-F]{40})" | head -n 1)
-            echo "Alternative signing identity: '$SIGNING_IDENTITY'"
-          fi
-          
-          if [ -z "$SIGNING_IDENTITY" ]; then
-            echo "ERROR: No signing identity found in keychain"
-            exit 1
-          fi
-          
-          # Sign the binary
-          codesign --force --sign "$SIGNING_IDENTITY" --timestamp --options runtime ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
+          # Sign the binary using the identity name
+          codesign --force --sign "$APPLE_SIGNING_IDENTITY" --timestamp --options runtime ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
           
           # Verify signature
           codesign --verify --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
