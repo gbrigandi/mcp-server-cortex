@@ -78,7 +78,17 @@ jobs:
           
           # Import certificate with -A flag to avoid access control issues
           echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          
+          # Debug: Check P12 file contents
+          echo "=== P12 file contents ==="
+          openssl pkcs12 -in certificate.p12 -info -noout -passin pass:"$APPLE_CERTIFICATE_PASSWORD" || true
+          
+          # Import certificate
           security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -A -T /usr/bin/codesign
+          
+          # Debug: Check what was imported
+          echo "=== Certificates in keychain after import ==="
+          security find-certificate -a -p build.keychain | openssl x509 -text -noout | grep -E "(Subject|Issuer|Key Usage)" || true
           
           # Import Apple intermediate certificate (DER format)
           curl -o DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
