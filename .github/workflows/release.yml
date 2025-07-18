@@ -118,6 +118,49 @@ jobs:
           # Verify signature
           /usr/bin/codesign --verify --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
 
+      - name: Notarize Binary (macOS only)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-14'
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          # Create API key file
+          echo "=== Creating API key file ==="
+          API_KEY_FILE="AuthKey_${APPLE_API_KEY_ID}.p8"
+          echo "$APPLE_API_KEY_BASE64" | base64 --decode > "$API_KEY_FILE"
+          echo "Created: $API_KEY_FILE"
+          
+          # Create zip file for notarization using ditto (preserves metadata better)
+          echo "=== Creating zip file for notarization ==="
+          ZIP_FILE="mcp-server-cortex-${{ matrix.asset_name_suffix }}-notarization.zip"
+          ditto -c -k --sequesterRsrc --keepParent ./target/${{ matrix.target }}/release/${{ matrix.output_name }} "$ZIP_FILE"
+          echo "Created: $ZIP_FILE"
+          
+          # Submit for notarization
+          echo "=== Submitting for notarization ==="
+          echo "This may take several minutes..."
+          xcrun notarytool submit "$ZIP_FILE" \
+            --key "$API_KEY_FILE" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER_ID" \
+            --wait
+          
+          # Attempt to staple the notarization (will fail for command-line tools - this is expected)
+          echo "=== Attempting to staple notarization ==="
+          echo "Note: Stapling fails for command-line tools - this is normal"
+          xcrun stapler staple ./target/${{ matrix.target }}/release/${{ matrix.output_name }} || echo "Stapling failed (expected for command-line tools)"
+          
+          # Final verification
+          echo "=== Final signature and notarization verification ==="
+          codesign --verify --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }}
+          spctl --assess --type execute --verbose ./target/${{ matrix.target }}/release/${{ matrix.output_name }} || echo "spctl assessment completed"
+          
+          # Clean up files
+          rm -f "$ZIP_FILE" "$API_KEY_FILE"
+          
+          echo "=== Notarization completed successfully ==="
+
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
