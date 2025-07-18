@@ -85,18 +85,18 @@ jobs:
           echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
           security import certificate.p12 -k temp-keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           
-          # Import Apple intermediate certificate
+          # Import Apple intermediate certificate (DER format)
           curl -o DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
           security import DeveloperIDG2CA.cer -k temp-keychain -T /usr/bin/codesign
           
-          # Import Apple root certificate
-          curl -o AppleRootCA.cer https://www.apple.com/certificateauthority/AppleRootCA.cer
-          security import AppleRootCA.cer -k temp-keychain -T /usr/bin/codesign
+          # Import Apple Worldwide Developer Relations CA G3 (DER format)
+          curl -o AppleWWDRCAG3.cer https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
+          security import AppleWWDRCAG3.cer -k temp-keychain -T /usr/bin/codesign
           
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp-password temp-keychain
           
-          # Clean up certificate file
-          rm certificate.p12
+          # Clean up certificate files
+          rm certificate.p12 DeveloperIDG2CA.cer AppleWWDRCAG3.cer
 
       - name: Code Sign Binary (macOS only)
         if: matrix.os == 'macos-latest' || matrix.os == 'macos-14'
