@@ -1,4 +1,5 @@
 # MCP Server for Cortex
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/gbrigandi/mcp-server-cortex)](https://archestra.ai/mcp-catalog/gbrigandi__mcp-server-cortex)
 
 ![Claude Cortex Session](media/claude-cortex-session.png)
 
