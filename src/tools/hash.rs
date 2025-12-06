@@ -25,14 +25,24 @@ pub async fn scan_hash_with_virustotal(
     Parameters(params): Parameters<ScanHashWithVirusTotalParams>,
 ) -> Result<CallToolResult, ErrorData> {
     let hash_to_scan = params.hash;
-    
-    // Validate hash
-    if let Err(e) = validate_hash(&hash_to_scan) {
-        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid hash: {}", e))]));
-    }
+    let max_retries = params.max_retries.unwrap_or(5);
     let analyzer_name_to_run = params
         .analyzer_name
         .unwrap_or_else(|| "VirusTotal_GetReport_3_1".to_string());
+
+    tracing::info!(
+        hash = %hash_to_scan,
+        analyzer = %analyzer_name_to_run,
+        max_retries = %max_retries,
+        "Scanning hash with VirusTotal"
+    );
+
+    // Validate hash
+    if let Err(e) = validate_hash(&hash_to_scan) {
+        tracing::warn!(hash = %hash_to_scan, error = %e, "Hash validation failed");
+        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid hash: {}", e))]));
+    }
+    tracing::debug!(hash = %hash_to_scan, "Hash validation passed");
 
     let job_create_request = cortex_client::models::JobCreateRequest {
         data: Some(hash_to_scan.clone()),
@@ -49,12 +59,18 @@ pub async fn scan_hash_with_virustotal(
         attributes: None,
     };
 
+    tracing::debug!(
+        hash = %hash_to_scan,
+        analyzer = %analyzer_name_to_run,
+        "Submitting job to Cortex"
+    );
+
     cortex::run_analyzer_and_get_report(
         &server.cortex_config,
         &analyzer_name_to_run,
         job_create_request,
         &hash_to_scan,
-        params.max_retries.unwrap_or(5),
+        max_retries,
     )
     .await
 }

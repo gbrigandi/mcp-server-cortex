@@ -92,19 +92,30 @@ async fn get_analyzer_id_by_name(
     config: &Configuration,
     analyzer_name_to_find: &str,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    tracing::debug!(analyzer = %analyzer_name_to_find, "Looking up analyzer ID");
+
     let find_request = Some(cortex_client::models::AnalyzerFindRequest::default());
     let analyzer_instances =
         cortex_client::apis::analyzer_api::find_analyzers(config, find_request).await?;
+
+    tracing::debug!(count = %analyzer_instances.len(), "Found analyzer instances");
 
     for analyzer_instance in analyzer_instances {
         if let Some(name) = &analyzer_instance.name {
             if name == analyzer_name_to_find {
                 if let Some(id) = analyzer_instance._id {
+                    tracing::debug!(
+                        analyzer = %analyzer_name_to_find,
+                        id = %id,
+                        "Found analyzer"
+                    );
                     return Ok(Some(id));
                 }
             }
         }
     }
+
+    tracing::warn!(analyzer = %analyzer_name_to_find, "Analyzer not found");
     Ok(None)
 }
 
@@ -112,35 +123,88 @@ async fn run_job_and_wait_for_report(
     config: &Configuration,
     analyzer_worker_id: &str,
     job_request: cortex_client::models::JobCreateRequest,
-    _analyzer_name_for_log: &str,
-    _observable_for_log: &str,
+    analyzer_name_for_log: &str,
+    observable_for_log: &str,
     max_retries: usize,
 ) -> Result<cortex_client::models::JobReportResponse, Box<dyn std::error::Error>> {
     use cortex_client::apis::job_api;
     use std::time::Duration;
 
+    tracing::debug!(
+        analyzer = %analyzer_name_for_log,
+        observable = %observable_for_log,
+        worker_id = %analyzer_worker_id,
+        "Creating analyzer job"
+    );
+
     let job_response =
         job_api::create_analyzer_job(config, analyzer_worker_id, job_request).await?;
     let job_id = job_response._id.ok_or("No job ID returned")?;
 
+    tracing::info!(
+        job_id = %job_id,
+        analyzer = %analyzer_name_for_log,
+        observable = %observable_for_log,
+        max_retries = %max_retries,
+        "Job created, polling for completion"
+    );
+
     for attempt in 1..=max_retries {
         let job_details = job_api::get_job_by_id(config, &job_id).await?;
+        let status_str = match &job_details.status {
+            Some(s) => format!("{:?}", s),
+            None => "Unknown".to_string(),
+        };
+
+        tracing::debug!(
+            job_id = %job_id,
+            attempt = %attempt,
+            max_retries = %max_retries,
+            status = %status_str,
+            "Polling job status"
+        );
+
         match job_details.status {
             Some(cortex_client::models::job::Status::Success) => {
+                tracing::info!(
+                    job_id = %job_id,
+                    analyzer = %analyzer_name_for_log,
+                    observable = %observable_for_log,
+                    attempts = %attempt,
+                    "Job completed successfully"
+                );
                 return Ok(job_api::get_job_report(config, &job_id).await?);
             }
             Some(cortex_client::models::job::Status::Failure) => {
                 let err_msg = format!("Job failed: {:?}", job_details.error_message);
+                tracing::error!(
+                    job_id = %job_id,
+                    analyzer = %analyzer_name_for_log,
+                    error = ?job_details.error_message,
+                    "Job failed"
+                );
                 return Err(err_msg.into());
             }
             _ => {
                 if attempt < max_retries {
-                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    tracing::debug!(
+                        job_id = %job_id,
+                        attempt = %attempt,
+                        "Job still running, waiting 30 seconds..."
+                    );
+                    tokio::time::sleep(Duration::from_secs(30)).await;
                 }
             }
         }
     }
 
+    tracing::error!(
+        job_id = %job_id,
+        analyzer = %analyzer_name_for_log,
+        observable = %observable_for_log,
+        max_retries = %max_retries,
+        "Job did not complete in time"
+    );
     Err("Job did not complete in time.".into())
 }
 

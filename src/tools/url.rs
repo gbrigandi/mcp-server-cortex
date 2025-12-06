@@ -37,14 +37,24 @@ pub async fn scan_url_with_virustotal(
     Parameters(params): Parameters<ScanUrlWithVirusTotalParams>,
 ) -> Result<CallToolResult, ErrorData> {
     let url_to_scan = params.url;
-    
-    // Validate URL
-    if let Err(e) = validate_url(&url_to_scan) {
-        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid URL: {}", e))]));
-    }
+    let max_retries = params.max_retries.unwrap_or(5);
     let analyzer_name_to_run = params
         .analyzer_name
         .unwrap_or_else(|| "VirusTotal_Scan_3_1".to_string());
+
+    tracing::info!(
+        url = %url_to_scan,
+        analyzer = %analyzer_name_to_run,
+        max_retries = %max_retries,
+        "Scanning URL with VirusTotal"
+    );
+
+    // Validate URL
+    if let Err(e) = validate_url(&url_to_scan) {
+        tracing::warn!(url = %url_to_scan, error = %e, "URL validation failed");
+        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid URL: {}", e))]));
+    }
+    tracing::debug!(url = %url_to_scan, "URL validation passed");
 
     let job_create_request = cortex_client::models::JobCreateRequest {
         data: Some(url_to_scan.clone()),
@@ -61,12 +71,18 @@ pub async fn scan_url_with_virustotal(
         attributes: None,
     };
 
+    tracing::debug!(
+        url = %url_to_scan,
+        analyzer = %analyzer_name_to_run,
+        "Submitting job to Cortex"
+    );
+
     cortex::run_analyzer_and_get_report(
         &server.cortex_config,
         &analyzer_name_to_run,
         job_create_request,
         &url_to_scan,
-        params.max_retries.unwrap_or(5),
+        max_retries,
     )
     .await
 }
@@ -76,14 +92,24 @@ pub async fn analyze_url_with_urlscan_io(
     Parameters(params): Parameters<AnalyzeUrlWithUrlscanIoParams>,
 ) -> Result<CallToolResult, ErrorData> {
     let url_to_analyze = params.url;
-    
-    // Validate URL
-    if let Err(e) = validate_url(&url_to_analyze) {
-        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid URL: {}", e))]));
-    }
+    let max_retries = params.max_retries.unwrap_or(5);
     let analyzer_name_to_run = params
         .analyzer_name
         .unwrap_or_else(|| "Urlscan_io_Scan_0_1_0".to_string());
+
+    tracing::info!(
+        url = %url_to_analyze,
+        analyzer = %analyzer_name_to_run,
+        max_retries = %max_retries,
+        "Analyzing URL with Urlscan.io"
+    );
+
+    // Validate URL
+    if let Err(e) = validate_url(&url_to_analyze) {
+        tracing::warn!(url = %url_to_analyze, error = %e, "URL validation failed");
+        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid URL: {}", e))]));
+    }
+    tracing::debug!(url = %url_to_analyze, "URL validation passed");
 
     let job_create_request = cortex_client::models::JobCreateRequest {
         data: Some(url_to_analyze.clone()),
@@ -100,12 +126,18 @@ pub async fn analyze_url_with_urlscan_io(
         attributes: None,
     };
 
+    tracing::debug!(
+        url = %url_to_analyze,
+        analyzer = %analyzer_name_to_run,
+        "Submitting job to Cortex"
+    );
+
     cortex::run_analyzer_and_get_report(
         &server.cortex_config,
         &analyzer_name_to_run,
         job_create_request,
         &url_to_analyze,
-        params.max_retries.unwrap_or(5),
+        max_retries,
     )
     .await
 }

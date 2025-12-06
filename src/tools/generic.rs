@@ -32,9 +32,18 @@ pub async fn analyze_with_abusefinder(
 ) -> Result<CallToolResult, ErrorData> {
     let data_to_analyze = params.data;
     let data_type = params.data_type.to_lowercase();
+    let max_retries = params.max_retries.unwrap_or(5);
     let analyzer_name_to_run = params
         .analyzer_name
         .unwrap_or_else(|| "Abuse_Finder_3_0".to_string());
+
+    tracing::info!(
+        data = %data_to_analyze,
+        data_type = %data_type,
+        analyzer = %analyzer_name_to_run,
+        max_retries = %max_retries,
+        "Analyzing data with AbuseFinder"
+    );
 
     let allowed_data_types = ["ip", "domain", "fqdn", "url", "mail"];
     if !allowed_data_types.contains(&data_type.as_str()) {
@@ -42,9 +51,10 @@ pub async fn analyze_with_abusefinder(
             "Invalid data_type '{}'. Must be one of: {:?}",
             data_type, allowed_data_types
         );
-        tracing::error!("{}", err_msg);
+        tracing::warn!(data_type = %data_type, "Invalid data type provided");
         return Ok(CallToolResult::error(vec![Content::text(err_msg)]));
     }
+    tracing::debug!(data_type = %data_type, "Data type validation passed");
 
     let job_create_request = cortex_client::models::JobCreateRequest {
         data: Some(data_to_analyze.clone()),
@@ -64,12 +74,19 @@ pub async fn analyze_with_abusefinder(
         attributes: None,
     };
 
+    tracing::debug!(
+        data = %data_to_analyze,
+        data_type = %data_type,
+        analyzer = %analyzer_name_to_run,
+        "Submitting job to Cortex"
+    );
+
     cortex::run_analyzer_and_get_report(
         &server.cortex_config,
         &analyzer_name_to_run,
         job_create_request,
         &format!("{} ({})", data_to_analyze, data_type),
-        params.max_retries.unwrap_or(5),
+        max_retries,
     )
     .await
 }

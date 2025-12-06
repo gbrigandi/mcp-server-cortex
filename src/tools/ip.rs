@@ -26,14 +26,24 @@ pub async fn analyze_ip_with_abuseipdb(
     Parameters(params): Parameters<AnalyzeIpParams>,
 ) -> Result<CallToolResult, ErrorData> {
     let ip_to_analyze = params.ip;
-    
-    // Validate IP address
-    if let Err(e) = validate_ip(&ip_to_analyze) {
-        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid IP: {}", e))]));
-    }
+    let max_retries = params.max_retries.unwrap_or(5);
     let analyzer_name_to_run = params
         .analyzer_name
         .unwrap_or_else(|| "AbuseIPDB_1_0".to_string());
+
+    tracing::info!(
+        ip = %ip_to_analyze,
+        analyzer = %analyzer_name_to_run,
+        max_retries = %max_retries,
+        "Analyzing IP with AbuseIPDB"
+    );
+
+    // Validate IP address
+    if let Err(e) = validate_ip(&ip_to_analyze) {
+        tracing::warn!(ip = %ip_to_analyze, error = %e, "IP validation failed");
+        return Ok(CallToolResult::error(vec![Content::text(format!("Invalid IP: {}", e))]));
+    }
+    tracing::debug!(ip = %ip_to_analyze, "IP validation passed");
     
     let job_create_request = cortex_client::models::JobCreateRequest {
         data: Some(ip_to_analyze.clone()),
@@ -50,12 +60,18 @@ pub async fn analyze_ip_with_abuseipdb(
         attributes: None,
     };
 
+    tracing::debug!(
+        ip = %ip_to_analyze,
+        analyzer = %analyzer_name_to_run,
+        "Submitting job to Cortex"
+    );
+
     cortex::run_analyzer_and_get_report(
         &server.cortex_config,
         &analyzer_name_to_run,
         job_create_request,
         &ip_to_analyze,
-        params.max_retries.unwrap_or(5),
+        max_retries,
     )
     .await
 }
