@@ -101,17 +101,20 @@ async fn get_analyzer_id_by_name(
     tracing::debug!(count = %analyzer_instances.len(), "Found analyzer instances");
 
     for analyzer_instance in analyzer_instances {
-        if let Some(name) = &analyzer_instance.name {
-            if name == analyzer_name_to_find {
-                if let Some(id) = analyzer_instance._id {
-                    tracing::debug!(
-                        analyzer = %analyzer_name_to_find,
-                        id = %id,
-                        "Found analyzer"
-                    );
-                    return Ok(Some(id));
-                }
-            }
+        let name_matches = analyzer_instance
+            .name
+            .as_ref()
+            .map(|n| n == analyzer_name_to_find)
+            .unwrap_or(false);
+
+        if name_matches && analyzer_instance._id.is_some() {
+            let id = analyzer_instance._id.unwrap();
+            tracing::debug!(
+                analyzer = %analyzer_name_to_find,
+                id = %id,
+                "Found analyzer"
+            );
+            return Ok(Some(id));
         }
     }
 

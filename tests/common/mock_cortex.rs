@@ -16,6 +16,7 @@ use tokio_util::sync::CancellationToken;
 #[derive(Clone)]
 pub struct MockCortexServer {
     pub base_url: String,
+    #[allow(dead_code)]
     pub port: u16,
     analyzers: Arc<RwLock<HashMap<String, AnalyzerInfo>>>,
     jobs: Arc<RwLock<HashMap<String, JobInfo>>>,
@@ -32,9 +33,12 @@ pub struct AnalyzerInfo {
 #[derive(Clone, Debug)]
 pub struct JobInfo {
     pub id: String,
+    #[allow(dead_code)]
     pub analyzer_id: String,
     pub status: String,
+    #[allow(dead_code)]
     pub data: String,
+    #[allow(dead_code)]
     pub data_type: String,
     pub report: Option<Value>,
     pub error_message: Option<String>,
@@ -197,7 +201,7 @@ impl MockCortexServer {
     async fn create_job(&self, analyzer_id: String, body: Bytes) -> Result<Response<Full<Bytes>>, ()> {
         let job_request: Value = serde_json::from_slice(&body).map_err(|_| ())?;
         
-        let job_id = format!("job_{}", uuid::Uuid::new_v4().to_string().replace('-', "")[..8].to_string());
+        let job_id = format!("job_{}", &uuid::Uuid::new_v4().to_string().replace('-', "")[..8]);
         let data = job_request.get("data").and_then(|v| v.as_str()).unwrap_or("").to_string();
         let data_type = job_request.get("dataType").and_then(|v| v.as_str()).unwrap_or("").to_string();
         
@@ -386,6 +390,7 @@ impl MockCortexServer {
         }
     }
     
+    #[allow(dead_code)]
     pub async fn add_failing_analyzer(&self, analyzer_name: &str) {
         let mut analyzers = self.analyzers.write().await;
         analyzers.insert(format!("failing_{}", analyzer_name), AnalyzerInfo {
@@ -395,6 +400,7 @@ impl MockCortexServer {
         });
     }
     
+    #[allow(dead_code)]
     pub async fn simulate_job_failure(&self, job_id: &str, error_message: &str) {
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.get_mut(job_id) {
@@ -420,21 +426,25 @@ mod uuid {
     use std::time::{SystemTime, UNIX_EPOCH};
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
-    pub struct Uuid;
-    
+    use std::fmt;
+
+    pub struct Uuid {
+        hash: u64,
+    }
+
     impl Uuid {
         pub fn new_v4() -> Self {
-            Self
-        }
-        
-        pub fn to_string(&self) -> String {
             let mut hasher = DefaultHasher::new();
             let time = SystemTime::now().duration_since(UNIX_EPOCH)
                 .unwrap_or_default().as_nanos();
             time.hash(&mut hasher);
-            let hash = hasher.finish();
-            format!("{:x}", hash)
+            Self { hash: hasher.finish() }
+        }
+    }
+
+    impl fmt::Display for Uuid {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{:x}", self.hash)
         }
     }
 }

@@ -3,6 +3,11 @@
 //! These tests verify the full MCP server-client communication flow,
 //! including tool invocations, validation, and error handling.
 
+// Allow holding std::sync::Mutex guard across await points in tests.
+// This is acceptable here because tests run in isolation and the guard
+// is only used to prevent concurrent tests from modifying env vars.
+#![allow(clippy::await_holding_lock)]
+
 use std::env;
 use mcp_server_cortex::CortexToolsServer;
 use tokio::time::{timeout, Duration};
@@ -365,8 +370,8 @@ async fn test_server_creation_without_env_vars() {
     
     // Clear environment variables
     unsafe {
-        let _ = env::remove_var("CORTEX_ENDPOINT");
-        let _ = env::remove_var("CORTEX_API_KEY");
+        env::remove_var("CORTEX_ENDPOINT");
+        env::remove_var("CORTEX_API_KEY");
     }
     
     // Should fail to create server without proper environment variables
@@ -378,12 +383,12 @@ async fn test_server_creation_without_env_vars() {
         if let Some(endpoint) = saved_endpoint {
             env::set_var("CORTEX_ENDPOINT", endpoint);
         } else {
-            let _ = env::remove_var("CORTEX_ENDPOINT");
+            env::remove_var("CORTEX_ENDPOINT");
         }
         if let Some(api_key) = saved_api_key {
             env::set_var("CORTEX_API_KEY", api_key);
         } else {
-            let _ = env::remove_var("CORTEX_API_KEY");
+            env::remove_var("CORTEX_API_KEY");
         }
     }
 }
@@ -412,12 +417,12 @@ async fn test_server_creation_with_env_vars() {
         if let Some(endpoint) = saved_endpoint {
             env::set_var("CORTEX_ENDPOINT", endpoint);
         } else {
-            let _ = env::remove_var("CORTEX_ENDPOINT");
+            env::remove_var("CORTEX_ENDPOINT");
         }
         if let Some(api_key) = saved_api_key {
             env::set_var("CORTEX_API_KEY", api_key);
         } else {
-            let _ = env::remove_var("CORTEX_API_KEY");
+            env::remove_var("CORTEX_API_KEY");
         }
     }
 }

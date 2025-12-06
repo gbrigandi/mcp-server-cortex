@@ -43,12 +43,12 @@ async fn test_ip_validation_directly() {
         if let Some(endpoint) = saved_endpoint {
             env::set_var("CORTEX_ENDPOINT", endpoint);
         } else {
-            let _ = env::remove_var("CORTEX_ENDPOINT");
+            env::remove_var("CORTEX_ENDPOINT");
         }
         if let Some(api_key) = saved_api_key {
             env::set_var("CORTEX_API_KEY", api_key);
         } else {
-            let _ = env::remove_var("CORTEX_API_KEY");
+            env::remove_var("CORTEX_API_KEY");
         }
     }
 }
@@ -92,12 +92,12 @@ async fn test_url_validation_directly() {
         if let Some(endpoint) = saved_endpoint {
             env::set_var("CORTEX_ENDPOINT", endpoint);
         } else {
-            let _ = env::remove_var("CORTEX_ENDPOINT");
+            env::remove_var("CORTEX_ENDPOINT");
         }
         if let Some(api_key) = saved_api_key {
             env::set_var("CORTEX_API_KEY", api_key);
         } else {
-            let _ = env::remove_var("CORTEX_API_KEY");
+            env::remove_var("CORTEX_API_KEY");
         }
     }
 }
@@ -141,12 +141,12 @@ async fn test_hash_validation_directly() {
         if let Some(endpoint) = saved_endpoint {
             env::set_var("CORTEX_ENDPOINT", endpoint);
         } else {
-            let _ = env::remove_var("CORTEX_ENDPOINT");
+            env::remove_var("CORTEX_ENDPOINT");
         }
         if let Some(api_key) = saved_api_key {
             env::set_var("CORTEX_API_KEY", api_key);
         } else {
-            let _ = env::remove_var("CORTEX_API_KEY");
+            env::remove_var("CORTEX_API_KEY");
         }
     }
 }

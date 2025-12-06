@@ -109,22 +109,22 @@ impl TestMcpClient {
         let response = self.read_response().await?;
         
         // Parse the response - return a simple result indicator
-        if let Some(result) = response.get("result") {
-            if let Some(content) = result.get("content") {
-                return Ok(CallToolResult::success(
-                    content.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .map(|v| {
-                            if let Some(text) = v.get("text") {
-                                Content::text(text.as_str().unwrap_or(""))
-                            } else {
-                                Content::json(v.clone()).unwrap_or(Content::text(""))
-                            }
-                        })
-                        .collect()
-                ));
-            }
+        if let Some(result) = response.get("result")
+            && let Some(content) = result.get("content")
+        {
+            return Ok(CallToolResult::success(
+                content.as_array()
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .map(|v| {
+                        if let Some(text) = v.get("text") {
+                            Content::text(text.as_str().unwrap_or(""))
+                        } else {
+                            Content::json(v.clone()).unwrap_or(Content::text(""))
+                        }
+                    })
+                    .collect()
+            ));
         }
         
         if let Some(error) = response.get("error") {
@@ -214,6 +214,7 @@ pub mod test_data {
         })
     }
     
+    #[allow(dead_code)]
     pub fn invalid_ip_params() -> Value {
         json!({
             "ip": "256.256.256.256"
