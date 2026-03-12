@@ -1,5 +1,7 @@
 # MCP Server for Cortex
 
+[![Rust](https://img.shields.io/badge/rust-stable-blue)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE) [![MCPAmpel](https://img.shields.io/endpoint?url=https://mcpampel.com/badge/gbrigandi/mcp-server-cortex.json)](https://mcpampel.com/repo/gbrigandi/mcp-server-cortex)
+
 ![Claude Cortex Session](media/claude-cortex-session.png)
 
 This server acts as a bridge, exposing the powerful analysis capabilities of a [Cortex](https://thehive-project.org/cortex/) instance as tools consumable by Model Context Protocol (MCP) clients, such as large language models like Claude. It allows these clients to leverage Cortex analyzers for threat intelligence tasks.
