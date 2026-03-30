@@ -47,6 +47,10 @@ The recommended way to install the MCP Server for Cortex is to download a pre-co
 Alternatively, you can build the server from source (see the [Building](#building) section below).
 
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/gbrigandi-mcp-server-cortex).
+
 ## Configuration
 
 The server is configured using the following environment variables:
